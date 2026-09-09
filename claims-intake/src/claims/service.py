@@ -140,6 +140,14 @@ def evaluate_claim_type_covered(
     policy: Policy,
 ) -> ValidationOutcome:
     """V-5. The claim type must be permitted on the policy's product."""
+    if notification.claim_type not in policy.permitted_claim_types:
+        return ValidationOutcome.failed(
+            rule="V-5",
+            code="TYPE_NOT_COVERED",
+            claim_type=notification.claim_type,
+            product=policy.product,
+            permitted_claim_types=list(policy.permitted_claim_types),
+        )
     return ValidationOutcome.ok()
 
 
