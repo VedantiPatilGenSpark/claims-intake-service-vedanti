@@ -8,6 +8,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic_core import PydanticCustomError
 
 ClaimType = Literal["collision", "theft", "glass", "liability", "weather"]
 
@@ -36,8 +37,9 @@ class NotificationRequest(BaseModel):
     def estimated_amount_is_two_place_decimal(cls, value: object) -> Decimal:
         """Require a Decimal with exactly two places and a value greater than zero."""
         if isinstance(value, bool) or not isinstance(value, (str, Decimal)):
-            raise ValueError(
-                "estimated_amount must be a decimal string with exactly two decimal places"
+            raise PydanticCustomError(
+                "estimated_amount_type",
+                "estimated_amount must be a decimal string with exactly two decimal places",
             )
         try:
             amount = value if isinstance(value, Decimal) else Decimal(value)

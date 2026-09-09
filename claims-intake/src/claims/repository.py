@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 
 from claims.models import NotificationRequest, RecordedNotification
 
@@ -17,7 +17,9 @@ class NotificationRepository:
     def record(self, notification: NotificationRequest) -> RecordedNotification:
         """Write a notification and return it with a new claim reference."""
         recorded = RecordedNotification(
-            claim_reference=f"CLM-{date.today().year}-{self._next_sequence:06d}",
+            claim_reference=(
+                f"CLM-{datetime.now(tz=UTC).date().year}-{self._next_sequence:06d}"
+            ),
             policy_number=notification.policy_number,
             loss_date=notification.loss_date,
             claim_type=notification.claim_type,
