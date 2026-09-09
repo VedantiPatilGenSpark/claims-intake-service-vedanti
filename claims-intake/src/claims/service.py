@@ -166,6 +166,18 @@ def evaluate_not_cancelled(
     return ValidationOutcome.ok()
 
 
+# Policy-field rules only, in contract section 4.1 order: V-2, V-7, V-3, V-4, V-5.
+# V-1 uses the policy client and V-6 uses the repository, so they are not in this
+# list. submit_notification runs V-1, then this list, then V-6.
+POLICY_RULES = (
+    evaluate_loss_after_inception,
+    evaluate_not_cancelled,
+    evaluate_loss_before_expiry,
+    evaluate_amount_within_limit,
+    evaluate_claim_type_covered,
+)
+
+
 def evaluate_not_duplicate(
     notification: NotificationRequest,
     repository: NotificationRepository,
@@ -190,6 +202,12 @@ def evaluate_notification(
     policy: Policy,
 ) -> RuleFailure | None:
     """Evaluate policy-field rules in contract order and return the first failure."""
+    for rule in POLICY_RULES:
+        outcome = rule(notification, policy)
+        if not outcome.passed:
+            assert outcome.rule is not None
+            assert outcome.code is not None
+            return RuleFailure(rule=outcome.rule, code=outcome.code)
     return None
 
 
