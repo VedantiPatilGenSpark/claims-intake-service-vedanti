@@ -171,6 +171,17 @@ def evaluate_not_duplicate(
     repository: NotificationRepository,
 ) -> ValidationOutcome:
     """V-6. The loss event must not already be recorded."""
+    existing = repository.find_matching(
+        notification.policy_number,
+        notification.loss_date,
+        notification.claim_type,
+    )
+    if existing is not None:
+        return ValidationOutcome.failed(
+            rule="V-6",
+            code="DUPLICATE_NOTIFICATION",
+            claim_reference=existing.claim_reference,
+        )
     return ValidationOutcome.ok()
 
 
