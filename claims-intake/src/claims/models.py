@@ -10,6 +10,7 @@ Day 2 assignment. Implement these against `docs/api-contract.md` sections 2 and 
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Literal
@@ -17,6 +18,19 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 ClaimType = Literal["collision", "theft", "glass", "liability", "weather"]
+
+
+@dataclass(frozen=True)
+class RuleFailure:
+    """A single rule decision that refused a notification.
+
+    `rule` is the identifier (V-2). `code` is the contract error code
+    (LOSS_BEFORE_INCEPTION). They are separate fields so one cannot be passed
+    where the other is expected.
+    """
+
+    rule: str
+    code: str
 
 
 class NotificationRequest(BaseModel):
