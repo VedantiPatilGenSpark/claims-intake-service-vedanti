@@ -1,6 +1,6 @@
 # Agent decision log
 
-Engineering judgment during Day 3. Each entry names what the agent produced, what we decided, and a reason tied to an acceptance criterion or a failure that would have followed.
+Engineering judgment during Days 3 and 4. Each entry names what the agent produced, what we decided, and a reason tied to an acceptance criterion or a failure that would have followed.
 
 ## 1. Rejected / corrected — implement every remaining rule in one change
 
@@ -25,5 +25,13 @@ Engineering judgment during Day 3. Each entry names what the agent produced, wha
 **What we observed.** Merge remained **clickable**. The button was grey, not green, and the PR reported no conflicts with the base branch, but **Merge pull request** was still available. The failing check was **marked** on the PR; it did **not** block merge.
 
 **Finding.** This is repository configuration, not a defect in `checks.yaml`. Branch protection does not require the `checks` job to pass before merge. Per the assignment we report that rather than working around it (for example by weakening the workflow).
+
+## 4. Challenged — put `detail` on `RuleFailure` so HTTP can read compared facts
+
+**What the agent produced.** Day 4 step 1: keep section 5 `detail` keys on the `ValidationOutcome` that `submit_notification` returns. The agent planned to add a `detail` field to `RuleFailure`, copy it in `evaluate_notification`, and unpack it when rebuilding `ValidationOutcome.failed(...)`.
+
+**What we decided.** Do not grow `RuleFailure`. Change `evaluate_notification` to return the failed `ValidationOutcome` (already populated by the rule function). `submit_notification` returns that object instead of constructing a new failure from `rule` and `code` only.
+
+**Reason.** `RuleFailure` was a `(rule, code)` squeeze. Putting `detail` on it would duplicate `ValidationOutcome` so a Day 3 return type could stay unchanged. V-1 and V-6 already leave the pipeline as `ValidationOutcome`; V-2…V-5 and V-7 should too, or HTTP would have to invent compared facts (forbidden in `routes.py`) or ship empty `detail` (contract section 5). `RuleFailure` remains the Day 2 model and is no longer created on the submit path.
 
 
