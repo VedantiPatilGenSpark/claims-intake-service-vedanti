@@ -22,42 +22,46 @@ RULE_CASES = (
         "INVALID-01",
         422,
         "POLICY_NOT_FOUND",
-        ("policy_number",),
+        {"policy_number": "MOT-9999"},
         id="v1_policy_not_found",
     ),
     pytest.param(
         "INVALID-02",
         422,
         "LOSS_BEFORE_INCEPTION",
-        ("loss_date", "effective_date"),
+        {"loss_date": "2026-02-20", "effective_date": "2026-03-15"},
         id="v2_loss_before_inception",
     ),
     pytest.param(
         "INVALID-03",
         422,
         "LOSS_AFTER_EXPIRY",
-        ("loss_date", "expiry_date"),
+        {"loss_date": "2026-03-20", "expiry_date": "2026-02-28"},
         id="v3_loss_after_expiry",
     ),
     pytest.param(
         "INVALID-04",
         422,
         "AMOUNT_EXCEEDS_LIMIT",
-        ("estimated_amount", "limit"),
+        {"estimated_amount": "14500.00", "limit": "10000.00"},
         id="v4_amount_exceeds_limit",
     ),
     pytest.param(
         "INVALID-05",
         422,
         "TYPE_NOT_COVERED",
-        ("claim_type", "product", "permitted_claim_types"),
+        {
+            "claim_type": "collision",
+            "product": "personal_auto_liability_only",
+            "permitted_claim_types": ["liability"],
+        },
         id="v5_type_not_covered",
     ),
     pytest.param(
         "INVALID-07",
         422,
         "POLICY_CANCELLED",
-        ("loss_date", "cancellation_date"),
+        {"loss_date": "2026-03-05", "cancellation_date": "2026-02-01"},
         id="v7_policy_cancelled",
     ),
 )
@@ -93,7 +97,7 @@ def test_valid_notification_returns_201_with_claim_reference(client: TestClient)
 
 
 @pytest.mark.parametrize(
-    ("payload_id", "status", "code", "detail_keys"),
+    ("payload_id", "status", "code", "expected_detail"),
     RULE_CASES,
 )
 def test_rule_rejection_returns_contract_status_code_and_detail(
@@ -101,15 +105,15 @@ def test_rule_rejection_returns_contract_status_code_and_detail(
     payload_id: str,
     status: int,
     code: str,
-    detail_keys: tuple[str, ...],
+    expected_detail: dict[str, Any],
 ) -> None:
     """Each INVALID payload that is not a duplicate fails the named rule over HTTP."""
     response = client.post("/notifications", json=INVALID[payload_id])
     assert response.status_code == status
     body = response.json()
     assert body["code"] == code
-    for key in detail_keys:
-        assert key in body["detail"]
+    for key, value in expected_detail.items():
+        assert body["detail"][key] == value
 
 
 def test_duplicate_notification_returns_409_with_existing_reference(
