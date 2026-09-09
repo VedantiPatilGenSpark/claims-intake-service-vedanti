@@ -96,7 +96,13 @@ class RecordedNotification(BaseModel):
     """A notification that passed every rule and was written.
 
     Carries the claim reference issued at the time it was recorded. Contract
-    section 3 fixes the reference format.
-
-    Day 2 assignment: declare the fields.
+    section 3 fixes the reference format. The remaining fields are the
+    notification as stored, including the three keys WI-0151 matches on.
     """
+
+    claim_reference: str = Field(pattern=r"^CLM-\d{4}-\d{6}$")
+    policy_number: str = Field(min_length=1)
+    loss_date: date
+    claim_type: ClaimType
+    estimated_amount: Decimal
+    description: str | None = None
