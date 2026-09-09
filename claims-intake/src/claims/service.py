@@ -107,6 +107,13 @@ def evaluate_loss_before_expiry(
     policy: Policy,
 ) -> ValidationOutcome:
     """V-3. The loss must not fall after the policy expiry date."""
+    if notification.loss_date > policy.expiry_date:
+        return ValidationOutcome.failed(
+            rule="V-3",
+            code="LOSS_AFTER_EXPIRY",
+            loss_date=notification.loss_date.isoformat(),
+            expiry_date=policy.expiry_date.isoformat(),
+        )
     return ValidationOutcome.ok()
 
 
