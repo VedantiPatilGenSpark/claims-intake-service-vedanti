@@ -83,3 +83,11 @@ A decision recorded here and nowhere else has not been made. Amend `docs/api-con
 **Rejected alternative.** Accept the payload, or round to `3500.00` / `3499.99`, or invent a 422 code. Rounding would record an amount the caller did not send, which is the reason section 2.2 already refuses unknown fields rather than ignoring them. A 422 would tell a person to change the data, but milles are a serialization defect in the caller, and no row in the rule table names that condition.
 
 **Contract amended.** Section 4.1 Stage A now states that `estimated_amount` has exactly two digits after the decimal point, that a three-place value is not that type, and that the service does not round it.
+
+## Assignment 2 reconciliation
+
+Compared every refusal `NotificationRequest` can raise to contract section 6. Nothing was missing. No amendment to `docs/api-contract.md`.
+
+**How we checked.** Listed the model's constraints against the unit cases in `tests/unit/test_models.py`: extra field; missing `policy_number`, `loss_date`, `claim_type`, or `estimated_amount`; empty `policy_number`; invalid `loss_date`; `claim_type` outside the vocabulary; `estimated_amount` with the wrong scale, `<= 0`, or a non-decimal type. Each of those is Stage A (W-1). Section 6 already maps that to `MALFORMED_REQUEST` at 400. Day 4 will turn `ValidationError` into that code; we did not add per-constraint codes because they all mean the same thing: the body could not be interpreted.
+
+`Policy` and `RecordedNotification` can also fail construction (omitted `cancellation_date`; `claim_reference` that is not `CLM-YYYY-NNNNNN`). Those objects are not built from a portal payload. They are not HTTP responses, so they do not belong in section 6.
