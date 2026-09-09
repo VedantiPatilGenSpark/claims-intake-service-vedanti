@@ -19,10 +19,10 @@ Day 3 assignment. Build the remaining rules test-first against
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
-from claims.models import NotificationRequest, Policy, RuleFailure
-from claims.policy_client import PolicyClient, PolicyNotFound
+from claims.models import ClaimType, NotificationRequest, Policy, RuleFailure
+from claims.policy_client import PolicyClient, PolicyNotFound, PolicyRecord
 from claims.repository import NotificationRepository
 
 
@@ -43,10 +43,11 @@ class ValidationOutcome:
     rule: str | None = None
     code: str | None = None
     detail: dict[str, Any] = field(default_factory=dict)
+    claim_reference: str | None = None
 
     @classmethod
-    def ok(cls) -> ValidationOutcome:
-        return cls(passed=True)
+    def ok(cls, claim_reference: str | None = None) -> ValidationOutcome:
+        return cls(passed=True, claim_reference=claim_reference)
 
     @classmethod
     def failed(cls, rule: str, code: str, **detail: Any) -> ValidationOutcome:
@@ -211,10 +212,41 @@ def evaluate_notification(
     return None
 
 
+def _policy_from_record(record: PolicyRecord) -> Policy:
+    return Policy(
+        policy_number=record.policy_number,
+        product=record.product,
+        effective_date=record.effective_date,
+        expiry_date=record.expiry_date,
+        cancellation_date=record.cancellation_date,
+        limit=record.limit,
+        permitted_claim_types=cast(tuple[ClaimType, ...], record.permitted_claim_types),
+    )
+
+
 def submit_notification(
     notification: NotificationRequest,
     policy_client: PolicyClient,
     repository: NotificationRepository,
 ) -> ValidationOutcome:
-    """Validate, and record only if every rule passed."""
-    return ValidationOutcome.ok()
+    """Resolve the policy, evaluate, and record only if every rule passed.
+
+    PolicyLookupFailed is not caught: the caller did nothing wrong and Day 4
+    maps reason to 502/503/504. PolicyNotFound is V-1.
+    """
+    try:
+        record = policy_client.get_policy(notification.policy_number)
+    except PolicyNotFound:
+        return ValidationOutcome.failed(
+            rule="V-1",
+            code="POLICY_NOT_FOUND",
+            policy_number=notification.policy_number,
+        )
+    failure = evaluate_notification(notification, _policy_from_record(record))
+    if failure is not None:
+        return ValidationOutcome.failed(rule=failure.rule, code=failure.code)
+    duplicate = evaluate_not_duplicate(notification, repository)
+    if not duplicate.passed:
+        return duplicate
+    recorded = repository.record(notification)
+    return ValidationOutcome.ok(claim_reference=recorded.claim_reference)
