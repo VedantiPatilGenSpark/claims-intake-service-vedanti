@@ -65,10 +65,17 @@ class Policy(BaseModel):
     """A policy as this service works with it.
 
     Built from the `PolicyRecord` the policy client returns. The fields the rules
-    compare against are the reason this model exists.
-
-    Day 2 assignment: declare the fields.
+    compare against are the reason this model exists. Every field is required
+    because the master always sends it; `cancellation_date` may be `None`.
     """
+
+    policy_number: str
+    product: str
+    effective_date: date
+    expiry_date: date
+    cancellation_date: date | None
+    limit: Decimal
+    permitted_claim_types: tuple[ClaimType, ...]
 
 
 class RecordedNotification(BaseModel):
