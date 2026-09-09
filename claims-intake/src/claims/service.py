@@ -134,6 +134,13 @@ def evaluate_not_cancelled(
     policy: Policy,
 ) -> ValidationOutcome:
     """V-7. The loss must fall before cancellation when the policy is cancelled."""
+    if policy.cancellation_date is not None and notification.loss_date >= policy.cancellation_date:
+        return ValidationOutcome.failed(
+            rule="V-7",
+            code="POLICY_CANCELLED",
+            loss_date=notification.loss_date.isoformat(),
+            cancellation_date=policy.cancellation_date.isoformat(),
+        )
     return ValidationOutcome.ok()
 
 
