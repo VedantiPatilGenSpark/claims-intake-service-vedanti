@@ -10,7 +10,13 @@ Day 2 assignment. Implement these against `docs/api-contract.md` sections 2 and 
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from datetime import date
+from decimal import Decimal, InvalidOperation
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+ClaimType = Literal["collision", "theft", "glass", "liability", "weather"]
 
 
 class NotificationRequest(BaseModel):
@@ -20,13 +26,39 @@ class NotificationRequest(BaseModel):
     is responsible for the shape of the request and for nothing else. Whether the
     policy exists, whether the loss falls inside the term, and whether the amount
     is within the limit are rules, and rules live in `service.py`.
-
-    `policy_number` is declared so that the V-1 rule in `service.py` has something
-    to read. Every other field, and every constraint on every field including this
-    one, is Day 2's work.
     """
 
-    policy_number: str
+    model_config = ConfigDict(extra="forbid")
+
+    policy_number: str = Field(min_length=1)
+    loss_date: date
+    claim_type: ClaimType
+    estimated_amount: Decimal
+    description: str | None = None
+
+    @field_validator("estimated_amount", mode="before")
+    @classmethod
+    def estimated_amount_is_two_place_decimal(cls, value: object) -> Decimal:
+        """Accept a Decimal or a decimal string with exactly two places.
+
+        Float is refused because it is not a decimal. Values with any other
+        scale are refused rather than rounded, per contract section 4.1.
+        """
+        if isinstance(value, bool) or not isinstance(value, (str, Decimal)):
+            raise ValueError(
+                "estimated_amount must be a decimal string with exactly two decimal places"
+            )
+        try:
+            amount = value if isinstance(value, Decimal) else Decimal(value)
+        except InvalidOperation as exc:
+            raise ValueError("estimated_amount is not a decimal") from exc
+        if amount.as_tuple().exponent != -2:
+            raise ValueError(
+                "estimated_amount must have exactly two decimal places; the service does not round"
+            )
+        if amount <= 0:
+            raise ValueError("estimated_amount must be greater than zero")
+        return amount
 
 
 class Policy(BaseModel):
