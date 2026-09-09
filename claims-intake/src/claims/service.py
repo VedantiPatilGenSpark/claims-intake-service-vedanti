@@ -21,7 +21,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, cast
 
-from claims.models import ClaimType, NotificationRequest, Policy, RuleFailure
+from claims.models import ClaimType, NotificationRequest, Policy
 from claims.policy_client import PolicyClient, PolicyNotFound, PolicyRecord
 from claims.repository import NotificationRepository
 
@@ -201,14 +201,12 @@ def evaluate_not_duplicate(
 def evaluate_notification(
     notification: NotificationRequest,
     policy: Policy,
-) -> RuleFailure | None:
+) -> ValidationOutcome | None:
     """Evaluate policy-field rules in contract order and return the first failure."""
     for rule in POLICY_RULES:
         outcome = rule(notification, policy)
         if not outcome.passed:
-            assert outcome.rule is not None
-            assert outcome.code is not None
-            return RuleFailure(rule=outcome.rule, code=outcome.code)
+            return outcome
     return None
 
 
@@ -244,7 +242,7 @@ def submit_notification(
         )
     failure = evaluate_notification(notification, _policy_from_record(record))
     if failure is not None:
-        return ValidationOutcome.failed(rule=failure.rule, code=failure.code)
+        return failure
     duplicate = evaluate_not_duplicate(notification, repository)
     if not duplicate.passed:
         return duplicate

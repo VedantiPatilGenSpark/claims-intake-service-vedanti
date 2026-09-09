@@ -7,10 +7,11 @@ from decimal import Decimal
 
 import pytest
 
-from claims.models import NotificationRequest, Policy, RuleFailure
+from claims.models import NotificationRequest, Policy
 from claims.policy_client import LookupFailureReason, PolicyLookupFailed, StubPolicyClient
 from claims.repository import NotificationRepository
 from claims.service import (
+    ValidationOutcome,
     evaluate_amount_within_limit,
     evaluate_claim_type_covered,
     evaluate_loss_after_inception,
@@ -210,9 +211,29 @@ def test_evaluate_notification_prefers_cancellation_over_expiry() -> None:
         cancellation_date=date(2025, 10, 1),
     )
     failure = evaluate_notification(notification, policy)
-    assert isinstance(failure, RuleFailure)
+    assert isinstance(failure, ValidationOutcome)
+    assert failure.passed is False
     assert failure.rule == "V-7"
     assert failure.code == "POLICY_CANCELLED"
+
+
+def test_submit_preserves_v2_detail(
+    policy_client: StubPolicyClient,
+    repository: NotificationRepository,
+) -> None:
+    outcome = submit_notification(
+        _request(
+            policy_number="MOT-4479",
+            loss_date=date(2026, 2, 20),
+            estimated_amount=Decimal("5000.00"),
+        ),
+        policy_client,
+        repository,
+    )
+    assert outcome.passed is False
+    assert outcome.code == "LOSS_BEFORE_INCEPTION"
+    assert "loss_date" in outcome.detail
+    assert "effective_date" in outcome.detail
 
 
 def test_submit_policy_not_found_is_v1(
